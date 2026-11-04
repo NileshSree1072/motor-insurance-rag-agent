@@ -44,19 +44,30 @@ is verbatim in the source, then spot-checked by hand (10 of 12 sampled were clea
 | **Contextual chunk headers** (index "insurer \| product \| section" with each chunk) | **89.7%** | restores that context consistently for every chunk |
 | Domain synonyms for BM25 and the reranker ("drunk" → "intoxicating liquor") | 91.4% | small gain; none on the held-out set |
 
-### Answers (single-shot RAG, 35 hand-written questions, judged by a different model)
+### Answers (35 hand-written questions; answers by gpt-oss-120b, graded by gpt-oss-20b)
 
-| Metric | Result |
-|---|---|
-| Correct (agrees with reference) | 93.1% |
-| Faithful (every claim supported by the excerpts) | 100% |
-| Correct refusals on 6 unanswerable questions | 6 / 6 |
-| Wrong refusals on 29 answerable questions | 1 / 29 |
-| Comparison questions correct | 2 / 4 |
+| Metric | Single search | Agent (partial: 7 questions so far) |
+|---|---|---|
+| Correct (agrees with reference) | 89.7% | 6 / 6 answerable |
+| Faithful (every claim supported by the excerpts) | 96.6% | 6 / 6 |
+| Citation accuracy (cited chunk contains the evidence) | 89.7% | 75% |
+| Correct refusals on unanswerable questions | 6 / 6 | 1 / 1 |
+| Wrong refusals on answerable questions | 0 / 29 | 0 / 6 |
+| **Comparison questions correct** | **2 / 4** | **4 / 4** |
+| Tokens per question | ~1,440 | ~13,200 |
+| Latency per question | ~5.6 s | ~81 s |
 
-Citation accuracy from this run is not reported: half the answers used `【n】` citations that the parser
-did not recognise at the time (fixed, with tests). **Agent-mode results are pending**: the Groq free tier allows
-200k tokens per model per day, and the eval runs used it up. They will be added here once measured.
+All three single-search failures are the same case: Universal Sompo has a base-policy towing limit
+("Rs. 1500 per accident") *and* a towing add-on ("free within 50 km"); search returned both and the model answered
+from the add-on. The agent searches each side separately and gets these right, at about 9x the tokens.
+
+On the one unanswerable question in the agent sample ("premium for a Honda City"), the agent searched six times and
+used ~27k tokens before correctly refusing: agents cost the most when the answer doesn't exist.
+
+**Still to measure:** the agent on the remaining 28 questions, and an ablation with and without the Neo4j tools
+(in the 7-question sample the agent used the graph tool once, on the one comparison single search refused).
+The Groq free tier allows 200k tokens per model per day, so these runs are done in parts and combined with
+`python -m motor_rag.evaluate merge`.
 
 ## Things that went wrong and what they taught
 
