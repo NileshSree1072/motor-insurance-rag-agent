@@ -20,8 +20,9 @@ RAW = ROOT / "data" / "raw"
 SOURCES = ROOT / "data" / "sources.csv"
 CHUNKS = ROOT / "data" / "processed" / "chunks.jsonl"
 
-MAX_CHARS = 1200
-MIN_CHARS = 200
+MAX_CHARS = 700
+MIN_CHARS = 150
+OVERLAP_CHARS = 200
 
 # "6. GENERAL EXCEPTIONS", "SECTION II - LIABILITY TO THIRD PARTIES", "EXCLUSIONS"
 HEADING = re.compile(
@@ -100,15 +101,30 @@ def clean(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def tail(text: str, size: int = OVERLAP_CHARS) -> str:
+    """The end of a chunk to repeat at the start of the next, beginning at a sentence or word."""
+    if len(text) <= size:
+        return text
+    end = text[-size:]
+    sentence = re.search(r"[.;:]\s+", end)
+    if sentence and sentence.end() < len(end) - 20:
+        return end[sentence.end():]
+    return end.split(" ", 1)[-1]
+
+
 def split_long(text: str, limit: int = int(MAX_CHARS * 1.5)) -> list[str]:
-    """Split text longer than `limit` at sentence ends, keeping pieces near MAX_CHARS."""
+    """Split text longer than `limit` at sentence ends, keeping pieces near MAX_CHARS.
+
+    Each piece after the first starts with the tail of the one before, so a
+    sentence on the boundary is whole in at least one piece.
+    """
     if len(text) <= limit:
         return [text]
     pieces, current = [], ""
     for sentence in re.split(r"(?<=[.;:])\s+", text):
         if current and len(current) + len(sentence) > MAX_CHARS:
             pieces.append(current)
-            current = ""
+            current = tail(current)
         current = f"{current} {sentence}".strip()
     if current:
         if pieces and len(current) < MIN_CHARS:
@@ -123,6 +139,35 @@ def is_boilerplate(text: str) -> bool:
     """Registered-office footers repeat on every page and only add noise to search."""
     t = text.lower()
     return ("cin:" in t or "irdai reg" in t or "registered office" in t or "regd. office" in t) and len(t) < 900
+
+
+def header_key(block: str) -> str:
+    # Page numbers differ from page to page ("Page 3 of 36"), so ignore digits.
+    return re.sub(r"[\d\s]+", "", block.lower())[:120]
+
+
+def margin_blocks(page, margin: float = 0.12) -> list[str]:
+    """Text blocks in the top or bottom `margin` of the page, where headers and footers live."""
+    h = page.rect.height
+    return [b[4] for b in page.get_text("blocks")
+            if b[6] == 0 and b[4].strip() and (b[3] < h * margin or b[1] > h * (1 - margin))]
+
+
+def running_headers(margins: list[list[str]]) -> set[str]:
+    """Margin blocks repeated on at least 30% of a document's pages (min 3) are headers/footers.
+
+    Only margin blocks count: phrases like "Provided always that" repeat just as
+    often in the body, and dropping them would cut real conditions.
+    """
+    if len(margins) < 3:
+        return set()
+    counts: dict[str, int] = {}
+    for blocks in margins:
+        for key in {header_key(b) for b in blocks}:
+            counts[key] = counts.get(key, 0) + 1
+    threshold = max(3, int(len(margins) * 0.3))
+    # Very short repeats ("Provided always that") are body phrases that landed near a page edge.
+    return {key for key, n in counts.items() if n >= threshold and len(key) >= 20}
 
 
 def chunk_document(path: Path, meta: dict) -> list[Chunk]:
@@ -149,9 +194,14 @@ def chunk_document(path: Path, meta: dict) -> list[Chunk]:
 
     prev_was_cell = False
     with fitz.open(path) as doc:
-        for page_no, page in enumerate(doc, start=1):
-            for block in page_blocks(page):
-                if is_boilerplate(block):
+        pages = [page_blocks(page) for page in doc]
+        margins = [margin_blocks(page) for page in doc]
+        running = running_headers(margins)
+        for page_no, blocks in enumerate(pages, start=1):
+            in_margin = {header_key(b) for b in margins[page_no - 1]}
+            for block in blocks:
+                key = header_key(block)
+                if is_boilerplate(block) or (key in running and key in in_margin):
                     continue
                 lines = block.strip().splitlines()
                 # Some insurers print the number and title of a heading on separate lines ("2." / "COVERAGE").
@@ -180,6 +230,10 @@ def chunk_document(path: Path, meta: dict) -> list[Chunk]:
                 buf.append(block)
                 if sum(len(b) for b in buf) > MAX_CHARS:
                     flush()
+                    # Cut for length, not at a heading: carry the tail over so a
+                    # sentence crossing the cut is whole in the next chunk.
+                    buf = [tail(chunks[-1].text)] if chunks else []
+                    buf_page = page_no
         flush()
     return chunks
 

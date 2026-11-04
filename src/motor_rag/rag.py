@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from motor_rag.ingest import Chunk
 from motor_rag.llm import chat
-from motor_rag.retrieve import Retriever
+from motor_rag.retrieve import Retriever, detect_insurers
 
 NOT_FOUND = "The provided policy documents do not cover this."
 
@@ -42,7 +42,7 @@ def cited_chunks(text: str, chunks: list[Chunk]) -> list[Chunk]:
 
 
 def answer(question: str, retriever: Retriever, k: int = 6, mode: str = "hybrid_rerank") -> Answer:
-    chunks = retriever.search(question, k=k, mode=mode)
+    chunks = retriever.search(question, k=k, mode=mode, insurer=detect_insurers(question) or None)
     resp = chat([
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"Excerpts:\n\n{format_context(chunks)}\n\nQuestion: {question}"},

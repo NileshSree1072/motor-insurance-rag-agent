@@ -11,7 +11,7 @@ GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
 
 def model_name() -> str:
-    return os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    return os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
 
 @lru_cache
