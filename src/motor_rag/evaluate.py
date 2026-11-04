@@ -94,7 +94,7 @@ def judge(q: Question, answer_text: str, context: str) -> dict:
         return {"faithful": False, "correct": False, "reason": "judge returned invalid JSON"}
 
 
-def eval_answers(retriever: Retriever, questions: list[Question], use_agent: bool) -> dict:
+def eval_answers(retriever: Retriever, questions: list[Question], use_agent: bool, use_graph: bool | None = None) -> dict:
     from motor_rag.rag import answer, format_context
     run = None
     if use_agent:
@@ -104,7 +104,7 @@ def eval_answers(retriever: Retriever, questions: list[Question], use_agent: boo
     rows = []
     for q in questions:
         start, tokens_before = time.perf_counter(), usage[model_name()]
-        a = run(q.question, retriever) if use_agent else answer(q.question, retriever)
+        a = run(q.question, retriever, use_graph=use_graph) if use_agent else answer(q.question, retriever)
         latency = time.perf_counter() - start
         row = {"id": q.id, "category": q.category, "answer": a.text, "refused": a.refused,
                "latency_s": round(latency, 2), "steps": getattr(a, "steps", 1),
@@ -117,7 +117,10 @@ def eval_answers(retriever: Retriever, questions: list[Question], use_agent: boo
                 row.update(judge(q, a.text, format_context(a.sources)))
         rows.append(row)
         print(f"  {q.id:<5} {'REFUSED' if a.refused else 'answered':<9} {latency:5.1f}s  {a.text[:90]!r}")
+    return {"summary": summarize(rows), "rows": rows}
 
+
+def summarize(rows: list[dict]) -> dict:
     answerable = [r for r in rows if r["category"] != "unanswerable"]
     unanswerable = [r for r in rows if r["category"] == "unanswerable"]
     judged = [r for r in answerable if "faithful" in r]
@@ -136,7 +139,19 @@ def eval_answers(retriever: Retriever, questions: list[Question], use_agent: boo
     for cat in sorted({r["category"] for r in answerable}):
         rs = [r for r in answerable if r["category"] == cat]
         summary["by_category"][cat] = {"n": len(rs), "correct": sum(bool(r.get("correct")) for r in rs) / len(rs)}
-    return {"summary": summary, "rows": rows}
+    return summary
+
+
+def merge(paths: list[str]) -> dict:
+    """Combine answer runs done in parts (e.g. across days, because of token quotas).
+
+    A question answered in more than one file keeps its latest result.
+    """
+    rows = {}
+    for path in sorted(paths):  # run files are timestamped, so sorted = oldest first
+        for row in json.loads(Path(path).read_text(encoding="utf-8"))["rows"]:
+            rows[row["id"]] = row
+    return {"summary": summarize(list(rows.values())), "rows": list(rows.values()), "merged_from": sorted(paths)}
 
 
 def print_answers(summary: dict, label: str):
@@ -159,15 +174,23 @@ def save(kind: str, data: dict) -> Path:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("kind", choices=["retrieval", "answers"])
+    parser.add_argument("kind", choices=["retrieval", "answers", "merge"])
+    parser.add_argument("files", nargs="*", help="merge: answer-run JSON files to combine")
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--agent", action="store_true", help="answer with the tool-calling agent")
+    parser.add_argument("--no-graph", action="store_true", help="agent without the Neo4j tools (ablation)")
     parser.add_argument("--only", help="comma-separated question ids")
     parser.add_argument("--min-recall", type=float,
                         help="retrieval: exit with an error if the production setup scores below this (CI quality gate)")
     parser.add_argument("--set", default="questions", choices=["questions", "heldout"],
                         help="questions: hand-written (used while tuning); heldout: generated, never tuned on")
     args = parser.parse_args()
+
+    if args.kind == "merge":
+        result = merge(args.files)
+        print_answers(result["summary"], f"merged from {len(args.files)} runs")
+        print(f"\nsaved {save('merged', result).relative_to(ROOT)}")
+        return
 
     retriever = Retriever()
     questions = load_questions(QUESTIONS.parent / f"{args.set}.jsonl")
@@ -188,10 +211,10 @@ def main():
                 raise SystemExit(f"FAIL: {PRODUCTION_SETUP} recall@{args.k} {score:.1%} < {args.min_recall:.0%}")
             print(f"PASS: {PRODUCTION_SETUP} recall@{args.k} {score:.1%} >= {args.min_recall:.0%}")
     else:
-        label = "agent" if args.agent else "single-shot RAG"
-        result = eval_answers(retriever, questions, args.agent)
-        print_answers(result["summary"], label)
-        print(f"\nsaved {save('agent' if args.agent else 'rag', result).relative_to(ROOT)}")
+        kind = ("agent-nograph" if args.no_graph else "agent") if args.agent else "rag"
+        result = eval_answers(retriever, questions, args.agent, use_graph=False if args.no_graph else None)
+        print_answers(result["summary"], kind)
+        print(f"\nsaved {save(kind, result).relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
