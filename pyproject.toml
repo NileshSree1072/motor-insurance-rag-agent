@@ -8,7 +8,6 @@ dependencies = [
     "pymupdf>=1.24",
     "rank-bm25>=0.2.2",
     "numpy>=1.26",
-    "sentence-transformers>=3.0",
     "openai>=1.40",
     "python-dotenv>=1.0",
     "pydantic>=2.7",
@@ -19,6 +18,21 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest>=8.0"]
+# Embedding and reranking models. Kept separate so unit tests (which never load
+# a model) can run in CI without downloading PyTorch.
+ml = ["sentence-transformers>=3.0", "torch>=2.4"]
+
+[tool.uv]
+default-groups = ["dev", "ml"]
+
+# On Linux (CI, Docker) use CPU-only PyTorch instead of the multi-GB CUDA build.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [build-system]
 requires = ["hatchling"]

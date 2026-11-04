@@ -18,6 +18,7 @@ from motor_rag.retrieve import MODES, Retriever
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNS = ROOT / "evals" / "runs"
+PRODUCTION_SETUP = "hybrid_rerank + insurer filter"  # what rag.answer() uses
 
 
 # ---------- retrieval ----------
@@ -80,10 +81,11 @@ Reply with JSON only: {{"faithful": true/false, "correct": true/false, "reason":
 
 
 def judge(q: Question, answer_text: str, context: str) -> dict:
-    from motor_rag.llm import chat
+    from motor_rag.llm import chat, judge_model_name
     resp = chat(
         [{"role": "user", "content": JUDGE_PROMPT.format(
             question=q.question, reference=q.reference, context=context, answer=answer_text)}],
+        model=judge_model_name(),
         response_format={"type": "json_object"},
     )
     try:
@@ -98,13 +100,16 @@ def eval_answers(retriever: Retriever, questions: list[Question], use_agent: boo
     if use_agent:
         from motor_rag.agent import run as run_agent
         run = run_agent
+    from motor_rag.llm import model_name, usage
     rows = []
     for q in questions:
-        start = time.perf_counter()
+        start, tokens_before = time.perf_counter(), usage[model_name()]
         a = run(q.question, retriever) if use_agent else answer(q.question, retriever)
         latency = time.perf_counter() - start
         row = {"id": q.id, "category": q.category, "answer": a.text, "refused": a.refused,
-               "latency_s": round(latency, 2), "steps": getattr(a, "steps", 1)}
+               "latency_s": round(latency, 2), "steps": getattr(a, "steps", 1),
+               "tokens": usage[model_name()] - tokens_before,
+               "tools": [s.tool for s in getattr(a, "trace", [])]}
         if q.answerable:
             # Citation accuracy: of the evidence items, how many are in chunks the answer actually cited.
             row["cited_evidence"] = sum(any(contains(c, ev) for c in a.cited) for ev in q.evidence) / len(q.evidence)
@@ -124,6 +129,8 @@ def eval_answers(retriever: Retriever, questions: list[Question], use_agent: boo
         "false_refusal_rate": sum(r["refused"] for r in answerable) / len(answerable),
         "correct_refusal_rate": sum(r["refused"] for r in unanswerable) / max(len(unanswerable), 1),
         "avg_latency_s": sum(r["latency_s"] for r in rows) / len(rows),
+        "avg_tokens": sum(r["tokens"] for r in rows) / len(rows),
+        "avg_steps": sum(r["steps"] for r in rows) / len(rows),
         "by_category": {},
     }
     for cat in sorted({r["category"] for r in answerable}):
@@ -137,6 +144,8 @@ def print_answers(summary: dict, label: str):
     for key in ("correct", "faithful", "citation_accuracy", "false_refusal_rate", "correct_refusal_rate"):
         print(f"  {key:<22}{summary[key]:>7.1%}")
     print(f"  {'avg_latency_s':<22}{summary['avg_latency_s']:>7.2f}")
+    print(f"  {'avg_tokens':<22}{summary['avg_tokens']:>7.0f}")
+    print(f"  {'avg_steps':<22}{summary['avg_steps']:>7.1f}")
     for cat, s in summary["by_category"].items():
         print(f"  correct on {cat:<11}{s['correct']:>7.1%}  (n={s['n']})")
 
@@ -154,6 +163,8 @@ def main():
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--agent", action="store_true", help="answer with the tool-calling agent")
     parser.add_argument("--only", help="comma-separated question ids")
+    parser.add_argument("--min-recall", type=float,
+                        help="retrieval: exit with an error if the production setup scores below this (CI quality gate)")
     parser.add_argument("--set", default="questions", choices=["questions", "heldout"],
                         help="questions: hand-written (used while tuning); heldout: generated, never tuned on")
     args = parser.parse_args()
@@ -171,6 +182,11 @@ def main():
         report = eval_retrieval(retriever, questions, args.k)
         print_retrieval(report, args.k, sum(q.answerable for q in questions))
         print(f"\nsaved {save('retrieval', report).relative_to(ROOT)}")
+        if args.min_recall is not None:
+            score = report[PRODUCTION_SETUP][f"recall@{args.k}"]
+            if score < args.min_recall:
+                raise SystemExit(f"FAIL: {PRODUCTION_SETUP} recall@{args.k} {score:.1%} < {args.min_recall:.0%}")
+            print(f"PASS: {PRODUCTION_SETUP} recall@{args.k} {score:.1%} >= {args.min_recall:.0%}")
     else:
         label = "agent" if args.agent else "single-shot RAG"
         result = eval_answers(retriever, questions, args.agent)

@@ -13,9 +13,10 @@ import json
 import time
 from dataclasses import dataclass, field
 
+from motor_rag import graph
 from motor_rag.ingest import Chunk, load_sources
 from motor_rag.llm import chat
-from motor_rag.rag import NOT_FOUND, cited_chunks
+from motor_rag.rag import NOT_FOUND, cited_chunks, tidy
 from motor_rag.retrieve import Retriever
 
 MAX_STEPS = 6
@@ -26,8 +27,9 @@ SYSTEM_PROMPT = f"""You are an assistant for Indian motor insurance policy quest
 
 How to work:
 - Search before answering. For a question about one insurer, pass that insurer to the search tool.
-- For a comparison, search each insurer separately; never assume two insurers have the same terms.
-- If a result mentions another clause that decides the answer (an exclusion, a definition, "subject to ..."), look that up too.
+- For any comparison (between insurers, or between vehicle types of one insurer), use compare_clauses
+  if it is available; otherwise search each side separately. Never assume two sides have the same terms.
+- If an excerpt says "subject to IMT ..." or refers to another Section, call follow_references on it if available.
 - Stop searching once you have the clauses you need.
 
 How to answer:
@@ -58,6 +60,30 @@ TOOLS = [
             "doc_id": {"type": "string"},
             "section": {"type": "string", "description": "Section heading exactly as shown in an excerpt."},
         }, "required": ["doc_id", "section"]},
+    }},
+]
+
+# Graph tools: only offered when Neo4j is reachable.
+GRAPH_TOOLS = [
+    {"type": "function", "function": {
+        "name": "compare_clauses",
+        "description": "For comparisons. Uses the clause graph to find every clause about one concept for each "
+                       "insurer x vehicle type combination, and returns the most relevant ones for each.",
+        "parameters": {"type": "object", "properties": {
+            "question": {"type": "string", "description": "The comparison question, in plain words."},
+            "concept": {"type": "string", "enum": list(graph.CONCEPTS)},
+            "insurers": {"type": "array", "items": {"type": "string"}, "description": "Exact insurer names."},
+            "vehicles": {"type": "array", "items": {"type": "string", "enum": list(VEHICLES)},
+                         "description": "Optional vehicle types to compare, e.g. [\"private_car\", \"goods_carrying\"]."},
+        }, "required": ["question", "concept", "insurers"]},
+    }},
+    {"type": "function", "function": {
+        "name": "follow_references",
+        "description": "Given an excerpt number whose text refers to another clause (\"subject to IMT 22\", "
+                       "\"under Section II\"), returns the clause it refers to and the text that continues it.",
+        "parameters": {"type": "object", "properties": {
+            "excerpt": {"type": "integer", "description": "Excerpt number, e.g. 3 for [3]."},
+        }, "required": ["excerpt"]},
     }},
 ]
 
@@ -93,12 +119,21 @@ class ToolError(Exception):
 
 
 class Harness:
-    def __init__(self, retriever: Retriever):
+    def __init__(self, retriever: Retriever, use_graph: bool | None = None):
         self.retriever = retriever
         self.excerpts: list[Chunk] = []  # global numbering: excerpt n is self.excerpts[n-1]
         self.cache: dict[str, str] = {}
         self.insurers = sorted({s["insurer"] for s in load_sources()
                                 if any(c.insurer == s["insurer"] for c in retriever.chunks)})
+        self.use_graph = graph.available() if use_graph is None else use_graph
+        self.tools = TOOLS + (GRAPH_TOOLS if self.use_graph else [])
+        self._by_id = {c.chunk_id: c for c in retriever.chunks}
+
+    def _insurer(self, name: str) -> str:
+        match = [i for i in self.insurers if i.lower() == name.lower()]
+        if not match:
+            raise ToolError(f"unknown insurer {name!r}; valid insurers: {', '.join(self.insurers)}")
+        return match[0]
 
     def _number(self, chunks: list[Chunk]) -> str:
         lines = []
@@ -113,10 +148,7 @@ class Harness:
         if not query.strip():
             raise ToolError("query must not be empty")
         if insurer:
-            match = [i for i in self.insurers if i.lower() == insurer.lower()]
-            if not match:
-                raise ToolError(f"unknown insurer {insurer!r}; valid insurers: {', '.join(self.insurers)}")
-            insurer = match[0]
+            insurer = self._insurer(insurer)
         if vehicle and vehicle not in VEHICLES:
             raise ToolError(f"vehicle must be one of {VEHICLES}")
         return self._number(self.retriever.search(query, k=EXCERPTS_PER_SEARCH, insurer=insurer, vehicle=vehicle))
@@ -134,12 +166,38 @@ class Harness:
             raise ToolError(f"no section {section!r} in {doc_id!r}; copy doc_id and section exactly from an excerpt")
         return self._number(chunks[:6])  # a section can be long; six chunks is plenty for one clause
 
+    def compare_clauses(self, question: str, concept: str, insurers: list[str], vehicles: list[str] | None = None) -> str:
+        if concept not in graph.CONCEPTS:
+            raise ToolError(f"concept must be one of {list(graph.CONCEPTS)}")
+        if not isinstance(insurers, list) or not insurers:
+            raise ToolError("insurers must be a non-empty list of insurer names")
+        vehicles = vehicles or [None]
+        if any(v is not None and v not in VEHICLES for v in vehicles):
+            raise ToolError(f"vehicles must be from {VEHICLES}")
+        if len(insurers) * len(vehicles) < 2:
+            raise ToolError("a comparison needs two or more insurers, or two or more vehicle types")
+        sections = []
+        for name in [self._insurer(i) for i in insurers]:
+            for vehicle in vehicles:
+                ids = graph.concept_by_insurer(concept, [name], vehicle).get(name, [])
+                best = self.retriever.rerank(question, [self._by_id[i] for i in ids if i in self._by_id], k=2)
+                label = f"{name}" + (f" / {vehicle}" if vehicle else "")
+                sections.append(f"=== {label} ===\n" + (self._number(best) if best else f"No clauses about {concept}."))
+        return "\n\n".join(sections)
+
+    def follow_references(self, excerpt: int) -> str:
+        if not isinstance(excerpt, int) or not 1 <= excerpt <= len(self.excerpts):
+            raise ToolError(f"excerpt must be a number between 1 and {len(self.excerpts)}")
+        ids = graph.related_clauses(self.excerpts[excerpt - 1].chunk_id)
+        chunks = [self._by_id[i] for i in ids if i in self._by_id]
+        return self._number(chunks) if chunks else "This excerpt does not refer to another clause in its document."
+
     def call(self, name: str, raw_args: str) -> tuple[str, str]:
         """Run one tool call. Returns (result text, trace note)."""
         key = f"{name}:{raw_args}"
         if key in self.cache:
             return self.cache[key] + "\n\n(You already made this exact call; use the results above.)", "repeated call"
-        if name not in {t["function"]["name"] for t in TOOLS}:
+        if name not in {t["function"]["name"] for t in self.tools}:
             return f"Error: unknown tool {name!r}", "unknown tool"
         try:
             args = json.loads(raw_args or "{}")
@@ -152,15 +210,15 @@ class Harness:
         return result, ""
 
 
-def run(question: str, retriever: Retriever, max_steps: int = MAX_STEPS) -> AgentAnswer:
-    harness = Harness(retriever)
+def run(question: str, retriever: Retriever, max_steps: int = MAX_STEPS, use_graph: bool | None = None) -> AgentAnswer:
+    harness = Harness(retriever, use_graph)
     messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": question}]
     trace: list[Step] = []
 
     for _ in range(max_steps):
-        msg = chat(messages, tools=TOOLS, tool_choice="auto").choices[0].message
+        msg = chat(messages, tools=harness.tools, tool_choice="auto").choices[0].message
         if not msg.tool_calls:
-            text = (msg.content or "").strip()
+            text = tidy(msg.content or "")
             return AgentAnswer(text=text, sources=harness.excerpts,
                                cited=cited_chunks(text, harness.excerpts), trace=trace)
         messages.append({"role": "assistant", "content": msg.content or "",
@@ -177,6 +235,6 @@ def run(question: str, retriever: Retriever, max_steps: int = MAX_STEPS) -> Agen
 
     # Out of steps: ask for a final answer from what was gathered, with tools disabled.
     messages.append({"role": "user", "content": "Step limit reached. Answer now using only the excerpts above, with citations."})
-    text = (chat(messages).choices[0].message.content or "").strip()
+    text = tidy(chat(messages).choices[0].message.content or "")
     return AgentAnswer(text=text, sources=harness.excerpts, cited=cited_chunks(text, harness.excerpts),
                        trace=trace, stopped_by_limit=True)

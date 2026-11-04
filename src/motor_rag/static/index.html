@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motor Insurance Policy Assistant</title>
+<style>
+  :root { --ink:#1f2933; --muted:#616e7c; --line:#e4e7eb; --accent:#1d4ed8; --soft:#eff4ff; --bg:#f7f8fa; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); background:var(--bg); }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  form { display:flex; gap:8px; flex-wrap:wrap; }
+  textarea { flex:1 1 100%; min-height:72px; padding:12px; border:1px solid var(--line); border-radius:10px; font:inherit; resize:vertical; }
+  select, button { padding:10px 14px; border-radius:10px; border:1px solid var(--line); font:inherit; background:#fff; }
+  button { background:var(--accent); color:#fff; border:0; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:wait; }
+  .examples { margin:12px 0 24px; display:flex; gap:6px; flex-wrap:wrap; }
+  .examples button { background:#fff; color:var(--accent); border:1px solid var(--line); font-weight:500; font-size:13px; padding:6px 10px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin-bottom:16px; }
+  .answer { white-space: pre-wrap; }
+  .cite { display:inline-block; min-width:22px; padding:0 5px; margin:0 1px; border-radius:6px; background:var(--soft); color:var(--accent);
+          font-size:12px; font-weight:700; text-align:center; cursor:pointer; text-decoration:none; }
+  .meta { color:var(--muted); font-size:13px; margin-top:10px; }
+  .src { border-top:1px solid var(--line); padding:12px 0; }
+  .src:first-of-type { border-top:0; }
+  .src h3 { font-size:14px; margin:0 0 4px; }
+  .src p { margin:6px 0 0; color:var(--muted); font-size:13px; }
+  .src.flash { background:var(--soft); }
+  details summary { cursor:pointer; color:var(--muted); font-size:13px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin-top:8px; }
+  td, th { border-top:1px solid var(--line); padding:6px 4px; text-align:left; vertical-align:top; }
+  .error { color:#b42318; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Motor Insurance Policy Assistant</h1>
+  <p class="sub">Answers come only from public Indian motor policy wordings. Every claim links to its source page.</p>
+
+  <form id="ask">
+    <textarea id="q" placeholder="e.g. Does SBI General pay if the driver was drunk?" required></textarea>
+    <select id="mode" aria-label="Answering mode">
+      <option value="agent">Agent (multi-step, uses the clause graph)</option>
+      <option value="rag">Single search</option>
+    </select>
+    <button id="go" type="submit">Ask</button>
+  </form>
+  <div class="examples" id="examples"></div>
+
+  <div id="out"></div>
+</main>
+<script>
+const examples = [
+  "What depreciation does SBI General apply to plastic parts and tyres?",
+  "Under Universal Sompo, how does the towing limit for a private car compare with a three-wheeled goods carrying vehicle?",
+  "How many claims can I make under ICICI Lombard's two wheeler Key Protect add-on?",
+  "What is the premium for a Honda City?",
+];
+const ex = document.getElementById("examples");
+for (const e of examples) {
+  const b = document.createElement("button");
+  b.type = "button"; b.textContent = e;
+  b.onclick = () => { document.getElementById("q").value = e; };
+  ex.appendChild(b);
+}
+
+const esc = s => s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function renderAnswer(text) {
+  // Escape first, then turn [n] / [1, 3] into links to the source list.
+  return esc(text).replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (_, nums) =>
+    nums.split(",").map(n => `<a class="cite" href="#src-${n.trim()}">${n.trim()}</a>`).join(""));
+}
+
+document.getElementById("ask").onsubmit = async (e) => {
+  e.preventDefault();
+  const out = document.getElementById("out"), go = document.getElementById("go");
+  go.disabled = true; go.textContent = "Thinking…";
+  out.innerHTML = "";
+  try {
+    const res = await fetch("/ask", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({question: document.getElementById("q").value, mode: document.getElementById("mode").value}),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail?.[0]?.msg || data.detail || res.statusText);
+
+    let html = `<div class="card"><div class="answer">${renderAnswer(data.answer)}</div>
+      <div class="meta">${data.latency_s}s · ${data.tokens} tokens${data.trace.length ? ` · ${data.trace.length} tool calls` : ""}</div></div>`;
+    if (data.citations.length) {
+      html += `<div class="card"><strong>Sources</strong>` + data.citations.map(c => `
+        <div class="src" id="src-${c.n}">
+          <h3>[${c.n}] ${esc(c.insurer)} · ${esc(c.product)}</h3>
+          <div class="meta">${esc(c.section)} · page ${c.page}${c.url ? ` · <a href="${esc(c.url)}" target="_blank" rel="noopener">open PDF</a>` : ""}</div>
+          <p>${esc(c.text)}</p>
+        </div>`).join("") + `</div>`;
+    }
+    if (data.trace.length) {
+      html += `<div class="card"><details><summary>How the agent worked (${data.trace.length} steps)</summary><table>
+        <tr><th>#</th><th>Tool</th><th>Arguments</th><th>Time</th></tr>` +
+        data.trace.map((s, i) => `<tr><td>${i + 1}</td><td>${esc(s.tool)}</td><td>${esc(JSON.stringify(s.args))}</td>
+          <td>${Math.round(s.ms)} ms${s.note ? ` · ${esc(s.note)}` : ""}</td></tr>`).join("") + `</table></details></div>`;
+    }
+    out.innerHTML = html;
+    out.querySelectorAll(".cite").forEach(a => a.onclick = () => {
+      const t = document.querySelector(a.getAttribute("href"));
+      if (t) { t.classList.add("flash"); setTimeout(() => t.classList.remove("flash"), 1200); }
+    });
+  } catch (err) {
+    out.innerHTML = `<div class="card error">${esc(String(err.message || err))}</div>`;
+  } finally {
+    go.disabled = false; go.textContent = "Ask";
+  }
+};
+</script>
+</body>
+</html>

@@ -37,8 +37,16 @@ def format_context(chunks: list[Chunk]) -> str:
 
 
 def cited_chunks(text: str, chunks: list[Chunk]) -> list[Chunk]:
-    nums = sorted({int(n) for n in re.findall(r"\[(\d+)\]", text)})
+    """Excerpts cited as [2], [1, 3] or 【2】 (some models use full-width brackets)."""
+    groups = re.findall(r"[\[【]\s*(\d+(?:\s*[,，]\s*\d+)*)\s*[\]】]", text)
+    nums = sorted({int(n) for g in groups for n in re.findall(r"\d+", g)})
     return [chunks[n - 1] for n in nums if 1 <= n <= len(chunks)]
+
+
+def tidy(text: str) -> str:
+    """Normalise model output: narrow/no-break spaces to spaces, 【n】 to [n]."""
+    text = text.replace(" ", " ").replace(" ", " ")
+    return re.sub(r"【\s*([\d,\s]+?)\s*】", r"[\1]", text).strip()
 
 
 def answer(question: str, retriever: Retriever, k: int = 6, mode: str = "hybrid_rerank") -> Answer:
@@ -47,5 +55,5 @@ def answer(question: str, retriever: Retriever, k: int = 6, mode: str = "hybrid_
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"Excerpts:\n\n{format_context(chunks)}\n\nQuestion: {question}"},
     ])
-    text = resp.choices[0].message.content.strip()
+    text = tidy(resp.choices[0].message.content)
     return Answer(text=text, sources=chunks, cited=cited_chunks(text, chunks))

@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"  # weekly retrieval eval: catches insurer documents changing or disappearing
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      # Unit tests never load a model, so skip PyTorch and sentence-transformers.
+      - run: uv sync --frozen --no-group ml
+      - run: uv run pytest -q
+
+  retrieval-eval:
+    # Downloads ~36 PDFs from insurer websites and builds the index, so it runs
+    # weekly and on demand rather than on every push. No LLM or API key needed.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - uses: actions/cache@v4
+        with:
+          path: |
+            data/raw
+            ~/.cache/huggingface
+          key: policy-pdfs-and-models-${{ hashFiles('data/sources.csv') }}
+      - name: Download policy documents
+        # Some insurer sites block automated downloads; the eval checks the labels still resolve.
+        run: uv run python -m motor_rag.download || true
+      - run: uv run python -m motor_rag.ingest
+      - name: Retrieval quality gate (held-out questions)
+        run: uv run python -m motor_rag.evaluate retrieval --set heldout --min-recall 0.80
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-runs
+          path: evals/runs/

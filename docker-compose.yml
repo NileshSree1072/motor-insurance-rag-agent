@@ -1,0 +1,20 @@
+services:
+  neo4j:
+    image: neo4j:5-community
+    ports:
+      - "7474:7474"   # browser UI
+      - "7687:7687"   # bolt (driver)
+    environment:
+      # Password comes from .env (NEO4J_PASSWORD); local development only.
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-change-me-locally}
+      NEO4J_server_memory_heap_max__size: 1G
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  neo4j-data:

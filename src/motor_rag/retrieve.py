@@ -163,6 +163,26 @@ class Retriever:
         """Search restricted to the insurers named in the query, if any."""
         return self.search(query, k=k, mode=mode, insurer=detect_insurers(query) or None)
 
+    def rerank(self, query: str, chunks: list[Chunk], k: int) -> list[Chunk]:
+        """Order given candidates by cross-encoder relevance, dropping near-duplicates.
+
+        Overlapping chunks repeat text, so two candidates can be almost the same
+        clause; keeping both wastes a result slot.
+        """
+        if not chunks:
+            return []
+        scores = self.reranker.predict([(expand(query), index_text(c)) for c in chunks])
+        picked, seen = [], set()
+        for j in np.argsort(-np.asarray(scores)):
+            key = re.sub(r"\W+", "", chunks[j].text.lower())[:150]
+            if key in seen:
+                continue
+            seen.add(key)
+            picked.append(chunks[j])
+            if len(picked) == k:
+                break
+        return picked
+
     def _search_each(self, query, k, mode, insurers, vehicle) -> list[Chunk]:
         """Comparisons: give every named insurer a fair share of the k results."""
         per = -(-k // len(insurers))  # ceil
@@ -188,6 +208,6 @@ class Retriever:
             return [self.chunks[i] for i in candidates[:k]]
 
         candidates = candidates[:30]
-        scores = self.reranker.predict([(query, index_text(self.chunks[i])) for i in candidates])
+        scores = self.reranker.predict([(expand(query), index_text(self.chunks[i])) for i in candidates])
         order = np.argsort(-np.asarray(scores))
         return [self.chunks[candidates[j]] for j in order[:k]]
