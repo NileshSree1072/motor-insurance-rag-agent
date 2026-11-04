@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+# Insurer PDFs are downloaded from the URLs in data/sources.csv, not redistributed.
+data/raw/
+data/processed/
+index/
+evals/runs/

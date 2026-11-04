@@ -1,0 +1,44 @@
+doc_id,insurer,product,vehicle,doc_type,url
+icici_pc_cis,ICICI Lombard,Private Car Package Policy,private_car,cis,https://www.icicilombard.com/docs/default-source/default-document-library/private-car-package-cis.pdf
+icici_pc_saod_pw,ICICI Lombard,Stand Alone Own Damage Private Car,private_car,wording,https://www.icicilombard.com/docs/default-source/default-document-library/stand-alone-own-damage-private-car-insurance-policy-wording.pdf
+icici_tw_pkg_pw,ICICI Lombard,Two Wheeler Package Policy,two_wheeler,wording,https://www.icicilombard.com/docs/default-source/default-document-library/two-wheeler-vehicle-package-policy8c0007ff45fd68ff8a0df0055fa6f941.pdf
+icici_tw_lt_pw,ICICI Lombard,Long Term Two Wheeler Package Policy,two_wheeler,wording,https://www.icicilombard.com/docs/default-source/downloads/long_term_two_wheeler_package_policy_wording8c0003ff45fd68ff8a0df0055e1130e4.pdf
+icici_pc_prospectus,ICICI Lombard,Private Car Prospectus,private_car,prospectus,https://www.icicilombard.com/docs/default-source/default-document-library/prospectus-pvt-1-0.pdf
+icici_gcv_liab_pw,ICICI Lombard,Goods Carrying Vehicle Liability Policy,goods_carrying,wording,https://www.icicilombard.com/docs/default-source/default-document-library/goods-carrying-vehicle-liability-policy-wording.pdf
+sbi_pc_pkg_pw,SBI General,Private Car Package Policy,private_car,wording,https://content.sbigeneral.in/uploads/410bf574fe26430c8b93adf720ad79e6.pdf
+sbi_pc_pkg_cis,SBI General,Private Car Package Policy,private_car,cis,https://content.sbigeneral.in/uploads/Private_Car_Insurance_Policy_Package_CIS_ee2126d773.pdf
+sbi_pc_saod_pw,SBI General,Stand Alone Own Damage Private Car,private_car,wording,https://content.sbigeneral.in/uploads/4b69687ea27843afa378ff1bb3564fa6.pdf
+sbi_gcv_pkg_pw,SBI General,Commercial Vehicle Package Goods Carrying,goods_carrying,wording,https://content.sbigeneral.in/uploads/Commercial_Vehicle_Insurance_Policy_Package_Goods_Carrying_1802_39af46d9fd.pdf
+generali_pc_pw,Generali Central,Motor Secure Private Car Package Policy,private_car,wording,https://www.generalicentralinsurance.com/pdf/faq-pdf/MotorSecure-PolicyWordings-WRFPV02.pdf
+generali_tw_lt_addon,Generali Central,Long Term Two Wheeler Package Add-ons,two_wheeler,addon,https://www.generalicentralinsurance.com/downloads/motor-insurance/long-term-two-wheeler-package-policy-retail-addon/policy-wording/long-term-two-wheeler-package-policy-retail-addon-wording.pdf
+generali_pc_cis,Generali Central,Motor Protect Private Car Package Policy,private_car,cis,https://www.generalicentralinsurance.com/downloads/motor-insurance/motor-protect-private-car-package-policy/customer-information-sheet/motor-protect-private-car-package-policy-cis.pdf
+fg_tw_lt_pw,Future Generali,Long Term Two Wheeler Package Policy,two_wheeler,wording,https://general.futuregenerali.in/downloads/motor-insurance/long-term-two-wheeler-package-policy/policy-wording/long-term-two-wheeler-package-policy-retail-policy-wordings.pdf
+usgi_pc_cis,Universal Sompo,Motor Private Car Package Policy,private_car,cis,https://universalsompo.com/assets/file/motor-private-car/motor-private-car-cis.pdf
+usgi_pc_addon,Universal Sompo,Motor Private Car Add-ons,private_car,addon,https://www.universalsompo.com/assets/file/motor-private-car/motor-private-car-addon.pdf
+usgi_pc3y_addon,Universal Sompo,Motor Private Car 3 Years Add-ons,private_car,addon,https://www.universalsompo.com/assets/file/motor-private-car-3-years/addons-motor-3-years.pdf
+usgi_pc_saod_pw,Universal Sompo,Stand Alone Own Damage Private Car,private_car,wording,https://www.universalsompo.com/assets/file/stand-alone-motor-own-damage-policy-private-car/stand-alone-motor-own-damage-policy-private-car-policy-wordings.pdf
+usgi_flexi_saod_pw,Universal Sompo,Flexi Stand Alone Own Damage,private_car,wording,https://www.universalsompo.com/assets/file/flexi-saod/policy-wordings.pdf
+usgi_flexi_saod_addon,Universal Sompo,Flexi Stand Alone Own Damage Add-ons,private_car,addon,https://www.universalsompo.com/assets/file/flexi-saod/addson.pdf
+usgi_gcv_pw,Universal Sompo,Motor Goods Carrying Vehicle Package Policy,goods_carrying,wording,https://universalsompo.com/assets/file/motor-goods-carrying-vehicle/motor-goods-carrying-vehicle-policy-wordings.pdf
+usgi_gcv_addon,Universal Sompo,Motor Goods Carrying Vehicle Add-ons,goods_carrying,addon,https://universalsompo.com/assets/file/motor-goods-carrying-vehicle/motor-goods-carrying-vehicle-addon.pdf
+usgi_misc_addon,Universal Sompo,Motor Miscellaneous Vehicles Add-ons,misc,addon,https://www.universalsompo.com/assets/file/motor-miscellaneous-vehicles/motor-miscellaneous-vehicles-addon.pdf
+iffco_pc_saod_pw,IFFCO Tokio,Standalone Motor Own Damage Private Car,private_car,wording,https://www.iffcotokio.co.in/content/dam/iffcotokio/policy-wordings/motor/standalone-motor-own-damage-policy-for-private-car.pdf
+iffco_pc_pa_addon,IFFCO Tokio,Personal Accident Coverage Private Car,private_car,addon,https://www.iffcotokio.co.in/content/dam/iffcotokio/pdfs/Wrdng-Personal_Accident_Coverage_Private_car.pdf
+iffco_tw5y_addon,IFFCO Tokio,Two Wheelers Package Policy 5 Years Add-ons,two_wheeler,addon,https://www.iffcotokio.co.in/content/dam/iffcotokio/iffco-pdf/sites/default/files/Add-ons_wording-Two_Wheelers_Package_Policy-5Years.pdf
+iffco_value_auto_pw,IFFCO Tokio,Value Auto Coverage OD Private Car,private_car,wording,https://www.iffcotokio.co.in/content/dam/iffcotokio/policy-wordings/motor/value-auto-coverage-wordings-od-pcp.pdf
+digit_pc_addon,Go Digit,Private Car Add-on Covers,private_car,addon,https://www.godigit.com/content/dam/godigit/directportal/en/downloads/car/policy-wordings-digit-private-car-add-on-cover.pdf
+digit_pc_saod_addon,Go Digit,Private Car Stand Alone Own Damage Add-ons,private_car,addon,https://www.godigit.com/content/dam/godigit/directportal/en/downloads/car/Private%20Car%20Stand%20Alone%20Own%20Damage%20Add%20-%20On%20Cover.pdf
+digit_pc_saod_cis,Go Digit,Private Car Stand Alone Own Damage,private_car,cis,https://godigit.com/content/dam/godigit/directportal/en/downloads/car/cis-digit-private-car-stand-alone-own-damage-policy-cis.pdf
+digit_tw_addon,Go Digit,Two Wheeler Package Add-on Covers,two_wheeler,addon,https://www.godigit.com/content/dam/godigit/directportal/en/downloads/bike/Digit-Two-Wheeler-Package-Policy-Add-On-Cover.pdf
+digit_gcv_pw,Go Digit,Commercial Vehicle Package Policy GCV,goods_carrying,wording,https://godigit.com/content/dam/godigit/directportal/en/downloads/commercial/digit-commercial-vehicle-package-policy-gcv-policy-wordings.pdf
+royal_gcv_cis,Royal Sundaram,Goods Carrying Vehicle Package Policy,goods_carrying,cis,https://royalsundaram.in/assets/forms-central/Goods_Carrying_vehicle_package_CIS.pdf
+newindia_tw_cis,New India Assurance,Two Wheeler Package Policy,two_wheeler,cis,https://www.newindia.co.in/assets/docs/know-more/motor/Customer%20Information%20Sheet%20(CIS)%20Two%20Wheeler%20Package%20Policy.pdf
+acko_tw_saod_zerodep,Acko,Stand Alone Own Damage Two Wheeler Zero Depreciation,two_wheeler,addon,https://www.acko.com/wp-content/uploads/2020/01/Stand-Alone-Own-Damage-Two-Wheeler-Policy-Add-ons_Zero-Depreciation.pdf
+acko_tw_engine,Acko,Two Wheeler Package Engine Protect,two_wheeler,addon,https://www.acko.com/wp-content/uploads/2019/11/Two-Wheeler-Package-Policy-Add-ons-Engine-Protect.pdf
+acko_tw_belongings,Acko,Two Wheeler Package Personal Belongings,two_wheeler,addon,https://www.acko.com/wp-content/uploads/2019/11/Two-Wheeler-Package-Policy-Add-ons-Personal-Belonging-Electronic-Equipment.pdf
+liberty_tw_pkg,Liberty General,Two Wheeler Package Policy and Add-ons,two_wheeler,wording,https://www.libertyinsurance.in/Docx/Two%20Wheeler%20Package%20Policy%20and%20Multi%20Year%20Policy%20and%20AddOns%20-%20IRDAN150RP0001V02201920.pdf
+liberty_pc_saod,Liberty General,Stand Alone Own Damage Private Car,private_car,wording,https://www.libertyinsurance.in/Docx/Stand%20-%20alone%20Own%20Damage%20Policy%20for%20Private%20Car%20-%20IRDAN150RP0004V02201819.pdf
+raheja_gcv_pkg_pw,Raheja QBE,Goods Carrying Vehicle Package Policy,goods_carrying,wording,https://www.rahejaqbe.com/uploads/images/package-policy/pdf/download/gcv-package-policy-wording-V03.pdf
+raheja_pc_saod_prospectus,Raheja QBE,Private Car SAOD Prospectus,private_car,prospectus,https://www.rahejaqbe.com/uploads/images/stand-alone/pdf/download/Private-Car-SAOD-Prospectus-V01.pdf
+raheja_gcv_liab_pw,Raheja QBE,GCV Liability Policy,goods_carrying,wording,https://www.rahejaqbe.com/uploads/images/liability-goods/pdf/download/gcv-liability-policy-wording-v02.pdf
+tata_gcv_cis,Tata AIG,Auto Secure Commercial Vehicle Package GCV,goods_carrying,cis,https://tataaig.com/s3/auto_secure_commercial_vehicle_package_policy_goods_carrying_vehicle_cis_5c3276e5c2.pdf
