@@ -36,7 +36,8 @@ Rebuilt from scratch because the original project and its documents were lost.
 3. DONE: All runs merged into evals/runs/20261108-123349-merged.json.
 4. DONE: Graph ablation run and verified; Neo4j proved to be critical (4/4 vs 1/4).
 5. DONE: Updated README "Answers" section.
-6. Ready: Resume and Project Guide updates.
+6. DONE: Resume and Project Guide updates.
+7. DONE: Semantic Cache Memory in `src/motor_rag/cache.py` (cosine similarity >= 0.92; serves repeated queries in <20 ms at 0 tokens).
 
 ## Lessons worth telling in interviews (all real)
 - Two-column PDFs mixed columns; fixed with column-aware block ordering.
