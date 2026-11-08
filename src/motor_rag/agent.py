@@ -23,16 +23,32 @@ MAX_STEPS = 6
 EXCERPTS_PER_SEARCH = 5
 VEHICLES = ("private_car", "two_wheeler", "goods_carrying", "misc")
 
+VALID_INSURERS = (
+    "Go Digit, ICICI Lombard, IFFCO Tokio, Liberty General, "
+    "New India Assurance, Raheja QBE, Royal Sundaram, SBI General, Tata AIG, Universal Sompo"
+)
+
 SYSTEM_PROMPT = f"""You are an assistant for Indian motor insurance policy questions. You can only know what the tools return.
+
+Indexed insurers: {VALID_INSURERS}.
+
+Scope and Out-of-Scope Questions:
+- Policy documents define coverage terms, exclusions, deductibles, depreciation schedules, conditions, endorsements, and add-ons.
+- Policy documents do NOT contain vehicle market prices, premium calculations/quotes, claims settlement ratios, or non-motor insurance (e.g. health or life insurance).
+- If a question is about an unindexed insurer or topics outside policy wordings, or if a targeted search shows no matching terms exist, do NOT repeatedly re-search with keyword variations. Stop searching and reply immediately: "{NOT_FOUND}"
 
 How to work:
 - Search before answering. For a question about one insurer, pass that insurer to the search tool.
-- For any comparison (between insurers, or between vehicle types of one insurer), use compare_clauses
-  if it is available; otherwise search each side separately. Never assume two sides have the same terms.
+- For any comparison (between insurers, or between vehicle types of one insurer), ALWAYS use compare_clauses if it is available; otherwise search each side separately.
+- When searching multiple insurers, vehicle types, or both base policy and add-ons, make all relevant tool calls in PARALLEL in a single turn rather than one by one across separate turns.
+- Only call get_section if an excerpt is explicitly cut off mid-sentence or refers to an unquoted Section. Do not call get_section if an excerpt already states the specific limit, percentage, or clause.
+- Once you have the clauses for each side, stop searching and answer immediately. Never assume two sides have the same terms.
 - If an excerpt says "subject to IMT ..." or refers to another Section, call follow_references on it if available.
-- Stop searching once you have the clauses you need.
+- Stop searching once you have the clauses you need. Do not make unnecessary repeated searches.
 
 How to answer:
+- Structure your answer cleanly with markdown: for comparisons, use clear sections or a markdown table comparing both sides, followed by a concise summary.
+- When quoting limits or benefits, distinguish base policy terms from optional add-ons.
 - Every factual sentence ends with the excerpt number(s) it relies on, like [3] or [2][7].
 - Quote numbers (percentages, rupee limits, days) exactly as written.
 - If the tools do not return the answer, reply exactly: "{NOT_FOUND}"
@@ -140,8 +156,11 @@ class Harness:
         for c in chunks:
             if c not in self.excerpts:
                 self.excerpts.append(c)
-            n = self.excerpts.index(c) + 1
-            lines.append(f"[{n}] {c.insurer} | {c.product} | doc_id={c.doc_id} | {c.section} | page {c.page}\n{c.text}")
+                n = len(self.excerpts)
+                lines.append(f"[{n}] {c.insurer} | {c.product} | doc_id={c.doc_id} | {c.section} | page {c.page}\n{c.text}")
+            else:
+                n = self.excerpts.index(c) + 1
+                lines.append(f"[{n}] {c.insurer} | {c.product} | doc_id={c.doc_id} | {c.section} | page {c.page}\n(Already retrieved above; refer to excerpt [{n}])")
         return "\n\n".join(lines) if lines else "No matching clauses found."
 
     def search_policy_clauses(self, query: str, insurer: str | None = None, vehicle: str | None = None) -> str:

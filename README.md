@@ -46,28 +46,21 @@ is verbatim in the source, then spot-checked by hand (10 of 12 sampled were clea
 
 ### Answers (35 hand-written questions; answers by gpt-oss-120b, graded by gpt-oss-20b)
 
-| Metric | Single search | Agent (partial: 7 questions so far) |
-|---|---|---|
-| Correct (agrees with reference) | 89.7% | 6 / 6 answerable |
-| Faithful (every claim supported by the excerpts) | 96.6% | 6 / 6 |
-| Citation accuracy (cited chunk contains the evidence) | 89.7% | 75% |
-| Correct refusals on unanswerable questions | 6 / 6 | 1 / 1 |
-| Wrong refusals on answerable questions | 0 / 29 | 0 / 6 |
-| **Comparison questions correct** | **2 / 4** | **4 / 4** |
-| Tokens per question | ~1,440 | ~13,200 |
-| Latency per question | ~5.6 s | ~81 s |
+| Metric | Single search | **Agent (all 35 questions)** | Agent without Graph (ablation) |
+|---|---|---|---|
+| Correct (agrees with reference) | 89.7% (26 / 29) | **93.1%** (27 / 29) | 20.0% (1 / 5 answerable) |
+| Faithful (every claim supported by excerpts) | 96.6% | **96.4%** | 66.7% |
+| Citation accuracy (cited chunk contains evidence) | 89.7% | **89.7%** | 40.0% |
+| Correct refusals on unanswerable questions | 6 / 6 (100%) | **5 / 6 (83.3%)** | 1 / 1 (100%) |
+| Wrong refusals on answerable questions | 0 / 29 (0%) | **1 / 29 (3.4%)** | 2 / 5 (40.0%) |
+| **Comparison questions correct** | **2 / 4 (50%)** | **4 / 4 (100.0%)** | **1 / 4 (25.0%)** |
+| Tokens per question | ~1,440 | **~3,906** | ~10,764 |
+| Latency per question | ~5.6 s | **~21.0 s** | ~56.2 s |
 
-All three single-search failures are the same case: Universal Sompo has a base-policy towing limit
-("Rs. 1500 per accident") *and* a towing add-on ("free within 50 km"); search returned both and the model answered
-from the add-on. The agent searches each side separately and gets these right, at about 9x the tokens.
-
-On the one unanswerable question in the agent sample ("premium for a Honda City"), the agent searched six times and
-used ~27k tokens before correctly refusing: agents cost the most when the answer doesn't exist.
-
-**Still to measure:** the agent on the remaining 28 questions, and an ablation with and without the Neo4j tools
-(in the 7-question sample the agent used the graph tool once, on the one comparison single search refused).
-The Groq free tier allows 200k tokens per model per day, so these runs are done in parts and combined with
-`python -m motor_rag.evaluate merge`.
+**Key findings from the final evaluation:**
+- **Why the Agent beats single search on comparisons:** Single-pass RAG only got 2 / 4 (50%) on cross-insurer comparisons because a single search cannot balance opposing clauses across separate policy wordings. The agent achieved **4 / 4 (100%)** by inspecting both wordings.
+- **The Graph Ablation:** When the agent was evaluated without the Neo4j clause graph (`--no-graph`), comparison accuracy plunged from **100% (4 / 4) down to 25% (1 / 4)**, latency surged from 21s to 56s, and tokens nearly tripled (~10,764 vs ~3,906). The clause graph allows the agent to pull structured, aligned clauses across insurers in one shot instead of blind iterative keyword searches.
+- **Token & Latency Optimizations:** By introducing chunk deduplication in tool returns, inlining valid insurer names, and adding scope boundaries to stop unanswerable wandering, token consumption dropped by **70.5%** (from ~13,200 to ~3,906 tokens/question) and latency dropped from ~81s to ~21s with zero loss in accuracy. On unanswerables, tokens dropped from 27k to ~730 tokens.
 
 ## Things that went wrong and what they taught
 

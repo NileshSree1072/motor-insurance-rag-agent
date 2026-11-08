@@ -124,13 +124,15 @@ def summarize(rows: list[dict]) -> dict:
     answerable = [r for r in rows if r["category"] != "unanswerable"]
     unanswerable = [r for r in rows if r["category"] == "unanswerable"]
     judged = [r for r in answerable if "faithful" in r]
+    n_ans = max(len(answerable), 1)
+    n_unans = max(len(unanswerable), 1)
     summary = {
         "questions": len(rows),
-        "correct": sum(bool(r.get("correct")) for r in answerable) / len(answerable),
+        "correct": sum(bool(r.get("correct")) for r in answerable) / n_ans if answerable else 0.0,
         "faithful": sum(bool(r.get("faithful")) for r in judged) / max(len(judged), 1),
-        "citation_accuracy": sum(r["cited_evidence"] for r in answerable) / len(answerable),
-        "false_refusal_rate": sum(r["refused"] for r in answerable) / len(answerable),
-        "correct_refusal_rate": sum(r["refused"] for r in unanswerable) / max(len(unanswerable), 1),
+        "citation_accuracy": sum(r["cited_evidence"] for r in answerable) / n_ans if answerable else 0.0,
+        "false_refusal_rate": sum(r["refused"] for r in answerable) / n_ans if answerable else 0.0,
+        "correct_refusal_rate": sum(r["refused"] for r in unanswerable) / n_unans,
         "avg_latency_s": sum(r["latency_s"] for r in rows) / len(rows),
         "avg_tokens": sum(r["tokens"] for r in rows) / len(rows),
         "avg_steps": sum(r["steps"] for r in rows) / len(rows),

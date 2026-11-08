@@ -13,8 +13,9 @@ def test_square_bracket_citations():
 
 
 def test_full_width_bracket_citations():
-    # gpt-oss writes 【1】; missing these made citation accuracy look like 31%.
+    # gpt-oss writes 【1】 or 【1†L1】; missing these made citation accuracy look like 31%.
     assert ids("Up to two claims【1】 and four RSA claims【3】.") == ["d#1", "d#3"]
+    assert ids("Towing limit is Rs 1500【2†L1-L3】 and nil【4†source】.") == ["d#2", "d#4"]
 
 
 def test_comma_separated_citations_and_out_of_range_numbers():

@@ -11,6 +11,8 @@ NOT_FOUND = "The provided policy documents do not cover this."
 SYSTEM_PROMPT = f"""You answer questions about Indian motor insurance policies using ONLY the numbered excerpts provided.
 
 Rules:
+- Structure your answer cleanly with markdown: for comparisons, use clear sections or a markdown table comparing both sides, followed by a concise summary.
+- When quoting limits or benefits, distinguish base policy terms from optional add-ons.
 - Every factual sentence must end with the excerpt number(s) it comes from, like [2] or [1][3].
 - Name the insurer when terms differ between insurers; never merge two insurers' terms into one answer.
 - Quote numbers (percentages, rupee limits, days) exactly as written in the excerpt.
@@ -37,15 +39,17 @@ def format_context(chunks: list[Chunk]) -> str:
 
 
 def cited_chunks(text: str, chunks: list[Chunk]) -> list[Chunk]:
-    """Excerpts cited as [2], [1, 3] or 【2】 (some models use full-width brackets)."""
+    """Excerpts cited as [2], [1, 3] or 【2】 or 【2†L1】 (some models use full-width brackets or dagger ranges)."""
+    text = tidy(text)
     groups = re.findall(r"[\[【]\s*(\d+(?:\s*[,，]\s*\d+)*)\s*[\]】]", text)
     nums = sorted({int(n) for g in groups for n in re.findall(r"\d+", g)})
     return [chunks[n - 1] for n in nums if 1 <= n <= len(chunks)]
 
 
 def tidy(text: str) -> str:
-    """Normalise model output: narrow/no-break spaces to spaces, 【n】 to [n]."""
+    """Normalise model output: narrow/no-break spaces to spaces, 【n】 and 【n†L1】 to [n]."""
     text = text.replace(" ", " ").replace(" ", " ")
+    text = re.sub(r"【\s*(\d+)(?:†[^】]*)?\s*】", r"[\1]", text)
     return re.sub(r"【\s*([\d,\s]+?)\s*】", r"[\1]", text).strip()
 
 

@@ -112,6 +112,13 @@ def test_excerpt_numbers_are_global_across_tool_calls(harness):
     assert len(harness.excerpts) == 3
 
 
+def test_already_retrieved_chunk_is_deduplicated_in_subsequent_call(harness):
+    harness.call("search_policy_clauses", json.dumps({"query": "a"}))  # returns chunks 1, 2
+    # Second search with different query returns fake chunks 1 and 2 again:
+    result, _ = harness.call("search_policy_clauses", json.dumps({"query": "b"}))
+    assert "(Already retrieved above; refer to excerpt [1])" in result
+
+
 def tool_call(name, args, id="call_1"):
     fn = SimpleNamespace(name=name, arguments=json.dumps(args))
     return SimpleNamespace(id=id, function=fn, model_dump=lambda: {"id": id, "type": "function",

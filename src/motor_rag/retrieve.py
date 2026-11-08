@@ -207,7 +207,7 @@ class Retriever:
         if mode == "hybrid":
             return [self.chunks[i] for i in candidates[:k]]
 
-        candidates = candidates[:30]
+        candidates = candidates[:15]
         scores = self.reranker.predict([(expand(query), index_text(self.chunks[i])) for i in candidates])
         order = np.argsort(-np.asarray(scores))
         return [self.chunks[candidates[j]] for j in order[:k]]
