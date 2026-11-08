@@ -127,9 +127,11 @@ class Retriever:
         if path.exists():
             return np.load(path)
         vecs = self.embedder.encode(texts, batch_size=32, normalize_embeddings=True, show_progress_bar=True)
-        for old in INDEX.glob("embeddings*.npy"):
-            old.unlink()
         np.save(path, vecs)
+        if len(self.chunks) > 5000:
+            for old in INDEX.glob("embeddings*.npy"):
+                if old != path:
+                    old.unlink()
         return vecs
 
     def _filter_mask(self, insurer: str | None, vehicle: str | None) -> np.ndarray:
@@ -208,6 +210,8 @@ class Retriever:
             return [self.chunks[i] for i in candidates[:k]]
 
         candidates = candidates[:15]
+        if not candidates:
+            return []
         scores = self.reranker.predict([(expand(query), index_text(self.chunks[i])) for i in candidates])
         order = np.argsort(-np.asarray(scores))
         return [self.chunks[candidates[j]] for j in order[:k]]

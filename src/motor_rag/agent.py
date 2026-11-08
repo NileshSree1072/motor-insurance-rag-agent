@@ -60,8 +60,8 @@ TOOLS = [
         "description": "Search policy wordings for clauses relevant to a query. Returns numbered excerpts.",
         "parameters": {"type": "object", "properties": {
             "query": {"type": "string", "description": "What to look for, in plain words."},
-            "insurer": {"type": "string", "description": "Optional exact insurer name from list_insurers."},
-            "vehicle": {"type": "string", "enum": list(VEHICLES), "description": "Optional vehicle type."},
+            "insurer": {"type": ["string", "null"], "description": "Optional exact insurer name from list_insurers. Pass null or omit if not filtering by insurer."},
+            "vehicle": {"type": ["string", "null"], "enum": list(VEHICLES) + [None], "description": "Optional vehicle type. Pass null or omit if not specific."},
         }, "required": ["query"]},
     }},
     {"type": "function", "function": {
@@ -89,8 +89,8 @@ GRAPH_TOOLS = [
             "question": {"type": "string", "description": "The comparison question, in plain words."},
             "concept": {"type": "string", "enum": list(graph.CONCEPTS)},
             "insurers": {"type": "array", "items": {"type": "string"}, "description": "Exact insurer names."},
-            "vehicles": {"type": "array", "items": {"type": "string", "enum": list(VEHICLES)},
-                         "description": "Optional vehicle types to compare, e.g. [\"private_car\", \"goods_carrying\"]."},
+            "vehicles": {"type": ["array", "null"], "items": {"type": "string", "enum": list(VEHICLES)},
+                         "description": "Optional vehicle types to compare, e.g. [\"private_car\", \"goods_carrying\"]. Pass null or omit if not filtering by vehicle."},
         }, "required": ["question", "concept", "insurers"]},
     }},
     {"type": "function", "function": {
