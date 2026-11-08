@@ -816,7 +816,8 @@ async function checkHealth() {
     const data = await res.json();
     const st = document.getElementById("status-text");
     const graphStatus = data.graph ? "Clause Graph Connected" : "Hybrid Text Search";
-    st.textContent = `${data.chunks.toLocaleString()} Chunks \u2022 ${graphStatus} \u2022 ${data.model}`;
+    const cacheCount = data.cache?.entries || 0;
+    st.textContent = `${data.chunks.toLocaleString()} Chunks \u2022 ${graphStatus} \u2022 ${cacheCount} Cached \u2022 ${data.model}`;
   } catch (e) {
     // Gracefully keep fallback status
   }
@@ -942,6 +943,11 @@ document.getElementById("ask").onsubmit = async (e) => {
     html += `
         <div class="answer" id="answer-text">${renderAnswer(data.answer)}</div>
         <div class="metrics-bar">
+          ${data.cached ? `
+          <div class="metric-badge" style="background:#ecfdf5;border-color:#a7f3d0;color:#059669;font-weight:600;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span>⚡ Semantic Cache (${Math.round((data.match_similarity || 1) * 100)}% match &bull; 0 Tokens)</span>
+          </div>` : ""}
           <div class="metric-badge">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             <span>${data.latency_s}s Latency</span>
