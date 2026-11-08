@@ -13,8 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
       # Unit tests never load a model, so skip PyTorch and sentence-transformers.
       - run: uv sync --frozen --no-group ml
       - run: uv run pytest -q
