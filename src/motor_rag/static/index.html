@@ -3,80 +3,870 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Motor Insurance Policy Assistant</title>
+<title>Motor Insurance Policy Assistant | Grounded RAG & AI Agent</title>
 <script src="/static/marked.min.js"></script>
 <style>
-  :root { --ink:#1f2933; --muted:#616e7c; --line:#e4e7eb; --accent:#1d4ed8; --soft:#eff4ff; --bg:#f7f8fa; }
-  * { box-sizing: border-box; }
-  body { margin:0; font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); background:var(--bg); }
-  main { max-width: 860px; margin: 0 auto; padding: 32px 20px 60px; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  .sub { color: var(--muted); margin: 0 0 20px; }
-  form { display:flex; gap:8px; flex-wrap:wrap; }
-  textarea { flex:1 1 100%; min-height:72px; padding:12px; border:1px solid var(--line); border-radius:10px; font:inherit; resize:vertical; }
-  select, button { padding:10px 14px; border-radius:10px; border:1px solid var(--line); font:inherit; background:#fff; }
-  button { background:var(--accent); color:#fff; border:0; font-weight:600; cursor:pointer; }
-  button:disabled { opacity:.6; cursor:wait; }
-  .examples { margin:12px 0 24px; display:flex; gap:6px; flex-wrap:wrap; }
-  .examples button { background:#fff; color:var(--accent); border:1px solid var(--line); font-weight:500; font-size:13px; padding:6px 10px; }
-  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin-bottom:16px; }
-  .answer { line-height: 1.6; }
-  .answer p { margin: 0 0 12px; }
+  :root {
+    --primary: #4338ca;
+    --primary-hover: #3730a3;
+    --primary-light: #e0e7ff;
+    --primary-soft: #eef2ff;
+    --slate-900: #0f172a;
+    --slate-800: #1e293b;
+    --slate-700: #334155;
+    --slate-600: #475569;
+    --slate-500: #64748b;
+    --slate-400: #94a3b8;
+    --slate-200: #e2e8f0;
+    --slate-100: #f1f5f9;
+    --slate-50:  #f8fafc;
+    --emerald-600: #059669;
+    --emerald-50: #ecfdf5;
+    --amber-600: #d97706;
+    --amber-50: #fffbeb;
+    --rose-600: #e11d48;
+    --rose-50: #fff1f2;
+    --card-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.08);
+    --hover-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", sans-serif;
+    color: var(--slate-800);
+    background: #f8fafc;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  header {
+    background: #ffffff;
+    border-bottom: 1px solid var(--slate-200);
+    padding: 16px 24px;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,0.03);
+  }
+  .header-inner {
+    max-width: 1040px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand-logo {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4f46e5 0%, #312e81 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 19px;
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25);
+  }
+  .brand-text h1 {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--slate-900);
+    letter-spacing: -0.01em;
+  }
+  .brand-text p {
+    font-size: 12.5px;
+    color: var(--slate-500);
+  }
+  .system-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--slate-600);
+    background: var(--slate-100);
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--slate-200);
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--emerald-600);
+    box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2);
+  }
+
+  /* Main Layout */
+  main {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 28px 20px 80px;
+  }
+
+  /* Query Card */
+  .search-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid var(--slate-200);
+    box-shadow: var(--card-shadow);
+    padding: 24px;
+    margin-bottom: 24px;
+    transition: box-shadow 0.2s ease;
+  }
+  .search-card:focus-within {
+    box-shadow: var(--hover-shadow);
+    border-color: #cbd5e1;
+  }
+
+  /* Mode Switcher Tabs */
+  .mode-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .mode-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--slate-700);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .segmented-switch {
+    display: inline-flex;
+    background: var(--slate-100);
+    padding: 3px;
+    border-radius: 10px;
+    border: 1px solid var(--slate-200);
+  }
+  .segmented-switch label {
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    color: var(--slate-600);
+    transition: all 0.15s ease;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .segmented-switch input[type="radio"] {
+    display: none;
+  }
+  .segmented-switch input[type="radio"]:checked + label {
+    background: #ffffff;
+    color: var(--primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  /* Input Box */
+  .input-wrapper {
+    position: relative;
+    margin-bottom: 14px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 88px;
+    padding: 14px 16px;
+    font-size: 15px;
+    line-height: 1.5;
+    font-family: inherit;
+    color: var(--slate-900);
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: 12px;
+    resize: vertical;
+    outline: none;
+    transition: all 0.15s ease;
+  }
+  textarea:focus {
+    background: #ffffff;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.12);
+  }
+  textarea::placeholder {
+    color: var(--slate-400);
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .kbd-hint {
+    font-size: 12px;
+    color: var(--slate-400);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  kbd {
+    background: var(--slate-100);
+    border: 1px solid var(--slate-200);
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 11px;
+    font-family: inherit;
+    color: var(--slate-600);
+  }
+
+  .btn-submit {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    color: #ffffff;
+    border: 0;
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(67, 56, 202, 0.25);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s ease;
+  }
+  .btn-submit:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(67, 56, 202, 0.35);
+  }
+  .btn-submit:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Suggested Prompts */
+  .quick-queries {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--slate-200);
+  }
+  .quick-queries-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--slate-400);
+    margin-bottom: 10px;
+  }
+  .chips-container {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .query-chip {
+    background: #ffffff;
+    color: var(--slate-700);
+    border: 1px solid var(--slate-200);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .query-chip:hover {
+    border-color: var(--primary-light);
+    background: var(--primary-soft);
+    color: var(--primary-hover);
+    transform: translateY(-1px);
+  }
+
+  /* Response Card */
+  .response-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid var(--slate-200);
+    box-shadow: var(--card-shadow);
+    padding: 24px;
+    margin-bottom: 20px;
+    animation: fadeIn 0.25s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .response-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--slate-100);
+  }
+  .response-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ai-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .response-title h2 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--slate-900);
+  }
+  .btn-copy {
+    background: transparent;
+    border: 1px solid var(--slate-200);
+    color: var(--slate-600);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s ease;
+  }
+  .btn-copy:hover {
+    background: var(--slate-50);
+    color: var(--slate-900);
+    border-color: var(--slate-300);
+  }
+
+  /* Markdown Answer Typography */
+  .answer {
+    font-size: 15px;
+    line-height: 1.68;
+    color: var(--slate-800);
+  }
+  .answer p { margin-bottom: 14px; }
   .answer p:last-child { margin-bottom: 0; }
-  .answer ul, .answer ol { margin: 8px 0 14px 20px; padding: 0; }
-  .answer li { margin-bottom: 4px; }
-  .answer strong { color: var(--ink); font-weight: 600; }
-  .answer table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 14px; background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-  .answer th { background: #f8fafc; font-weight: 600; text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--line); border-top: 0; }
-  .answer td { padding: 9px 12px; border-top: 1px solid var(--line); vertical-align: top; }
-  .answer tr:nth-child(even) td { background: #fafbfc; }
-  .cite { display:inline-block; min-width:22px; padding:0 5px; margin:0 1px; border-radius:6px; background:var(--soft); color:var(--accent);
-          font-size:12px; font-weight:700; text-align:center; cursor:pointer; text-decoration:none; }
-  .meta { color:var(--muted); font-size:13px; margin-top:10px; }
-  .src { border-top:1px solid var(--line); padding:12px 0; }
-  .src:first-of-type { border-top:0; }
-  .src h3 { font-size:14px; margin:0 0 4px; }
-  .src p { margin:6px 0 0; color:var(--muted); font-size:13px; white-space: pre-wrap; }
-  .src.flash { background:var(--soft); }
-  details summary { cursor:pointer; color:var(--muted); font-size:13px; }
-  details table { border-collapse:collapse; width:100%; font-size:13px; margin-top:8px; }
-  details td, details th { border-top:1px solid var(--line); padding:6px 4px; text-align:left; vertical-align:top; }
-  .error { color:#b42318; }
+  .answer strong { font-weight: 600; color: var(--slate-900); }
+  .answer ul, .answer ol {
+    margin: 10px 0 16px 24px;
+    padding: 0;
+  }
+  .answer li { margin-bottom: 6px; }
+  .answer h2, .answer h3, .answer h4 {
+    color: var(--slate-900);
+    font-weight: 700;
+    margin: 18px 0 10px;
+  }
+  .answer h3 { font-size: 16px; }
+  .answer h4 { font-size: 15px; }
+  .answer blockquote {
+    border-left: 3px solid var(--primary);
+    background: var(--primary-soft);
+    padding: 10px 14px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+    color: var(--slate-700);
+    font-style: italic;
+  }
+
+  /* Modern Markdown Table */
+  .table-wrapper {
+    overflow-x: auto;
+    margin: 16px 0;
+    border-radius: 10px;
+    border: 1px solid var(--slate-200);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  }
+  .answer table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    text-align: left;
+    background: #ffffff;
+  }
+  .answer th {
+    background: var(--slate-50);
+    color: var(--slate-700);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--slate-200);
+  }
+  .answer td {
+    padding: 10px 14px;
+    border-top: 1px solid var(--slate-200);
+    color: var(--slate-700);
+    vertical-align: top;
+  }
+  .answer tr:nth-child(even) td {
+    background: #fafbfc;
+  }
+  .answer tr:hover td {
+    background: var(--slate-50);
+  }
+
+  /* Citation Pills */
+  .cite-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 19px;
+    padding: 0 5px;
+    margin: 0 2px;
+    border-radius: 5px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 11.5px;
+    font-weight: 700;
+    text-decoration: none;
+    border: 1px solid var(--primary-light);
+    vertical-align: baseline;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .cite-pill:hover {
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+    transform: scale(1.08);
+  }
+
+  /* Scope Refusal Alert */
+  .refusal-alert {
+    background: var(--amber-50);
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .refusal-alert svg {
+    color: var(--amber-600);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .refusal-alert-text {
+    font-size: 13.5px;
+    color: #92400e;
+    line-height: 1.5;
+  }
+  .refusal-alert-text strong {
+    color: #78350f;
+  }
+
+  /* Performance Metrics Bar */
+  .metrics-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--slate-100);
+  }
+  .metric-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: 6px;
+    color: var(--slate-600);
+  }
+  .metric-badge svg {
+    color: var(--slate-500);
+  }
+
+  /* Source Drawer / Cards */
+  .sources-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid var(--slate-200);
+    box-shadow: var(--card-shadow);
+    padding: 22px;
+    margin-bottom: 20px;
+  }
+  .sources-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .sources-header h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--slate-900);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .source-item {
+    border: 1px solid var(--slate-200);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    background: #ffffff;
+    transition: all 0.25s ease;
+  }
+  .source-item:last-child { margin-bottom: 0; }
+  .source-item.highlight-pulse {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.15);
+  }
+  .source-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .source-identity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .source-index {
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 5px;
+    border: 1px solid var(--primary-light);
+  }
+  .source-insurer {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--slate-900);
+  }
+  .source-product {
+    font-size: 13px;
+    color: var(--slate-600);
+  }
+  .source-page {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--slate-500);
+    background: var(--slate-100);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .source-section {
+    font-size: 12.5px;
+    color: var(--primary-hover);
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+  .source-quote {
+    font-size: 13px;
+    color: var(--slate-700);
+    line-height: 1.55;
+    background: var(--slate-50);
+    border-left: 2px solid var(--slate-300);
+    padding: 8px 12px;
+    border-radius: 0 6px 6px 0;
+    white-space: pre-wrap;
+    font-family: inherit;
+  }
+  .source-link {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .source-link:hover { text-decoration: underline; }
+
+  /* Agent Trace Timeline */
+  .trace-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid var(--slate-200);
+    box-shadow: var(--card-shadow);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  details summary {
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--slate-700);
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  details summary:hover { color: var(--slate-900); }
+  .trace-timeline {
+    margin-top: 14px;
+    padding-left: 10px;
+    border-left: 2px solid var(--slate-200);
+  }
+  .trace-step {
+    position: relative;
+    padding-left: 20px;
+    margin-bottom: 14px;
+  }
+  .trace-step:last-child { margin-bottom: 0; }
+  .trace-marker {
+    position: absolute;
+    left: -16px;
+    top: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 0 2px var(--primary-light);
+  }
+  .trace-step-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .trace-tool-tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--primary-soft);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .trace-time {
+    font-size: 11.5px;
+    color: var(--slate-400);
+  }
+  .trace-args {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11.5px;
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--slate-700);
+    overflow-x: auto;
+    white-space: pre-wrap;
+  }
+
+  /* Skeleton Loading State */
+  .skeleton-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid var(--slate-200);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .skeleton-line {
+    height: 14px;
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    animation: shimmer 1.5s infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Error Alert */
+  .error-card {
+    background: var(--rose-50);
+    border: 1px solid #fecdd3;
+    border-radius: 14px;
+    padding: 16px 20px;
+    color: var(--rose-600);
+    font-size: 14px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Toast Notification */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--slate-900);
+    color: #ffffff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s ease;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
 </style>
 </head>
 <body>
-<main>
-  <h1>Motor Insurance Policy Assistant</h1>
-  <p class="sub">Answers come only from public Indian motor policy wordings. Every claim links to its source page.</p>
 
-  <form id="ask">
-    <textarea id="q" placeholder="e.g. Does SBI General pay if the driver was drunk?" required></textarea>
-    <select id="mode" aria-label="Answering mode">
-      <option value="agent">Agent (multi-step, uses the clause graph)</option>
-      <option value="rag">Single search</option>
-    </select>
-    <button id="go" type="submit">Ask</button>
-  </form>
-  <div class="examples" id="examples"></div>
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-logo">🛡️</div>
+      <div class="brand-text">
+        <h1>Motor Insurance Policy Assistant</h1>
+        <p>Grounded Answers with Exact Page &amp; Clause Citations &bull; 10 Indian Insurers</p>
+      </div>
+    </div>
+    <div class="system-status" id="system-status">
+      <div class="status-dot"></div>
+      <span id="status-text">5,643 Chunks Indexed &bull; Clause Graph Ready</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="search-card">
+    <form id="ask">
+      <div class="mode-container">
+        <span class="mode-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+          Reasoning Pipeline:
+        </span>
+        <div class="segmented-switch">
+          <input type="radio" id="mode-agent" name="mode" value="agent" checked>
+          <label for="mode-agent">
+            <span>🤖 Agent (Clause Graph)</span>
+          </label>
+          <input type="radio" id="mode-rag" name="mode" value="rag">
+          <label for="mode-rag">
+            <span>⚡ Fast Search (Single-Pass)</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="input-wrapper">
+        <textarea id="q" placeholder="Ask any question regarding Indian motor insurance policy terms, exclusions, towing limits, deductibles, or add-ons..." required rows="3"></textarea>
+      </div>
+
+      <div class="form-actions">
+        <div class="kbd-hint">
+          <span>Tip: Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to submit</span>
+        </div>
+        <button id="go" type="submit" class="btn-submit">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          <span id="btn-text">Consult Assistant</span>
+        </button>
+      </div>
+
+      <div class="quick-queries">
+        <div class="quick-queries-title">Suggested Inquiries Across Policy Wordings</div>
+        <div class="chips-container" id="examples"></div>
+      </div>
+    </form>
+  </section>
 
   <div id="out"></div>
 </main>
+
+<div class="toast" id="toast">Answer copied to clipboard</div>
+
 <script>
+// Check server health on load
+async function checkHealth() {
+  try {
+    const res = await fetch("/health");
+    if (!res.ok) return;
+    const data = await res.json();
+    const st = document.getElementById("status-text");
+    const graphStatus = data.graph ? "Clause Graph Connected" : "Hybrid Text Search";
+    st.textContent = `${data.chunks.toLocaleString()} Chunks \u2022 ${graphStatus} \u2022 ${data.model}`;
+  } catch (e) {
+    // Gracefully keep fallback status
+  }
+}
+checkHealth();
+
+// Pre-packaged benchmark questions
 const examples = [
-  "What depreciation does SBI General apply to plastic parts and tyres?",
-  "Under Universal Sompo, how does the towing limit for a private car compare with a three-wheeled goods carrying vehicle?",
-  "How many claims can I make under ICICI Lombard's two wheeler Key Protect add-on?",
-  "What is the premium for a Honda City?",
+  { text: "Universal Sompo: Towing limit for private car vs three-wheeled goods carrier?", tag: "Cross-comparison" },
+  { text: "What depreciation does SBI General apply to plastic parts and tyres?", tag: "Depreciation" },
+  { text: "How many claims can I make under ICICI Lombard's Key Protect add-on?", tag: "Add-on limits" },
+  { text: "Does HDFC ERGO cover mechanical breakdown or consequential loss?", tag: "Exclusions" },
+  { text: "What is the ex-showroom price of a Honda City?", tag: "Out of scope" }
 ];
-const ex = document.getElementById("examples");
-for (const e of examples) {
-  const b = document.createElement("button");
-  b.type = "button"; b.textContent = e;
-  b.onclick = () => { document.getElementById("q").value = e; };
-  ex.appendChild(b);
+
+const exContainer = document.getElementById("examples");
+for (const item of examples) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "query-chip";
+  btn.innerHTML = `<span>\u2022</span> <span>${item.text}</span>`;
+  btn.onclick = () => {
+    document.getElementById("q").value = item.text;
+    document.getElementById("q").focus();
+  };
+  exContainer.appendChild(btn);
 }
 
-const esc = s => s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// Keyboard shortcut: Ctrl + Enter / Cmd + Enter
+document.getElementById("q").addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    e.preventDefault();
+    document.getElementById("ask").requestSubmit();
+  }
+});
+
+// Helper for escaping HTML
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+// Markdown parser configuration
+if (window.marked && typeof marked.setOptions === "function") {
+  marked.setOptions({ gfm: true, breaks: true });
+}
 
 function renderAnswer(text) {
   let html = "";
@@ -85,49 +875,191 @@ function renderAnswer(text) {
   } else {
     html = esc(text).replace(/\n/g, "<br>");
   }
-  // Turn [n] or [1, 3] or [1][3] into clickable citation pills
+  // Wrap any tables in responsive container for clean mobile scrolling
+  html = html.replace(/<table>/g, '<div class="table-wrapper"><table>').replace(/<\/table>/g, '</table></div>');
+
+  // Turn [n] or [1, 3] or [1][3] into clickable citation badges
   return html.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (_, nums) =>
-    nums.split(",").map(n => `<a class="cite" href="#src-${n.trim()}">${n.trim()}</a>`).join(""));
+    nums.split(",").map(n => `<a class="cite-pill" href="#src-${n.trim()}" title="View Source Excerpt [${n.trim()}]">${n.trim()}</a>`).join(""));
 }
 
 document.getElementById("ask").onsubmit = async (e) => {
   e.preventDefault();
-  const out = document.getElementById("out"), go = document.getElementById("go");
-  go.disabled = true; go.textContent = "Thinking…";
-  out.innerHTML = "";
+  const out = document.getElementById("out");
+  const go = document.getElementById("go");
+  const btnText = document.getElementById("btn-text");
+  const qVal = document.getElementById("q").value.trim();
+  const modeVal = document.querySelector('input[name="mode"]:checked').value;
+
+  go.disabled = true;
+  btnText.textContent = modeVal === "agent" ? "Reasoning with Clause Graph\u2026" : "Retrieving & Reranking\u2026";
+
+  // Show modern shimmer skeleton while waiting
+  out.innerHTML = `
+    <div class="skeleton-card">
+      <div class="skeleton-line" style="width: 35%;"></div>
+      <div class="skeleton-line" style="width: 90%;"></div>
+      <div class="skeleton-line" style="width: 82%;"></div>
+      <div class="skeleton-line" style="width: 65%;"></div>
+    </div>`;
+
   try {
     const res = await fetch("/ask", {
-      method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({question: document.getElementById("q").value, mode: document.getElementById("mode").value}),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: qVal, mode: modeVal }),
     });
+
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail?.[0]?.msg || data.detail || res.statusText);
 
-    let html = `<div class="card"><div class="answer">${renderAnswer(data.answer)}</div>
-      <div class="meta">${data.latency_s}s · ${data.tokens} tokens${data.trace.length ? ` · ${data.trace.length} tool calls` : ""}</div></div>`;
+    let html = "";
+
+    // 1. Answer Card
+    html += `
+      <div class="response-card">
+        <div class="response-header">
+          <div class="response-title">
+            <div class="ai-avatar">\u2728</div>
+            <h2>Assistant Response</h2>
+          </div>
+          <button type="button" class="btn-copy" id="copy-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span>Copy</span>
+          </button>
+        </div>`;
+
+    if (data.refused) {
+      html += `
+        <div class="refusal-alert">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          <div class="refusal-alert-text">
+            <strong>Out-of-Scope Policy Limit:</strong> This question asks for information outside Indian motor policy wordings. Policies define coverage, deductibles, exclusions, and conditions &mdash; not vehicle market prices, showroom taxes, or claim statistics.
+          </div>
+        </div>`;
+    }
+
+    html += `
+        <div class="answer" id="answer-text">${renderAnswer(data.answer)}</div>
+        <div class="metrics-bar">
+          <div class="metric-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>${data.latency_s}s Latency</span>
+          </div>
+          <div class="metric-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+            <span>${data.tokens.toLocaleString()} Tokens</span>
+          </div>
+          ${data.trace.length ? `
+          <div class="metric-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            <span>${data.trace.length} Tool Calls</span>
+          </div>` : ""}
+          <div class="metric-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            <span>${data.citations.length} Cited Sources</span>
+          </div>
+        </div>
+      </div>`;
+
+    // 2. Sources Card
     if (data.citations.length) {
-      html += `<div class="card"><strong>Sources</strong>` + data.citations.map(c => `
-        <div class="src" id="src-${c.n}">
-          <h3>[${c.n}] ${esc(c.insurer)} · ${esc(c.product)}</h3>
-          <div class="meta">${esc(c.section)} · page ${c.page}${c.url ? ` · <a href="${esc(c.url)}" target="_blank" rel="noopener">open PDF</a>` : ""}</div>
-          <p>${esc(c.text)}</p>
-        </div>`).join("") + `</div>`;
+      html += `
+        <div class="sources-card">
+          <div class="sources-header">
+            <h3>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              Grounded Sources &amp; Evidence (${data.citations.length})
+            </h3>
+          </div>`;
+
+      for (const c of data.citations) {
+        html += `
+          <div class="source-item" id="src-${c.n}">
+            <div class="source-top">
+              <div class="source-identity">
+                <span class="source-index">[${c.n}]</span>
+                <span class="source-insurer">${esc(c.insurer)}</span>
+                <span class="source-product">&bull; ${esc(c.product)}</span>
+              </div>
+              <span class="source-page">Page ${c.page}</span>
+            </div>
+            <div class="source-section">${esc(c.section)}</div>
+            <div class="source-quote">${esc(c.text)}</div>
+            ${c.url ? `
+              <a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" class="source-link">
+                <span>Open IRDAI Document (Page ${c.page})</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              </a>` : ""}
+          </div>`;
+      }
+      html += `</div>`;
     }
+
+    // 3. Agent Execution Trace
     if (data.trace.length) {
-      html += `<div class="card"><details><summary>How the agent worked (${data.trace.length} steps)</summary><table>
-        <tr><th>#</th><th>Tool</th><th>Arguments</th><th>Time</th></tr>` +
-        data.trace.map((s, i) => `<tr><td>${i + 1}</td><td>${esc(s.tool)}</td><td>${esc(JSON.stringify(s.args))}</td>
-          <td>${Math.round(s.ms)} ms${s.note ? ` · ${esc(s.note)}` : ""}</td></tr>`).join("") + `</table></details></div>`;
+      html += `
+        <div class="trace-card">
+          <details>
+            <summary>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>View Agent Execution Trace (${data.trace.length} steps &bull; Neo4j &amp; Hybrid Search)</span>
+            </summary>
+            <div class="trace-timeline">`;
+
+      data.trace.forEach((s, idx) => {
+        html += `
+          <div class="trace-step">
+            <div class="trace-marker"></div>
+            <div class="trace-step-header">
+              <span class="trace-tool-tag">${esc(s.tool)}</span>
+              <span class="trace-time">${Math.round(s.ms)} ms${s.note ? ` &bull; ${esc(s.note)}` : ""}</span>
+            </div>
+            <div class="trace-args">${esc(JSON.stringify(s.args, null, 2))}</div>
+          </div>`;
+      });
+
+      html += `
+            </div>
+          </details>
+        </div>`;
     }
+
     out.innerHTML = html;
-    out.querySelectorAll(".cite").forEach(a => a.onclick = () => {
-      const t = document.querySelector(a.getAttribute("href"));
-      if (t) { t.classList.add("flash"); setTimeout(() => t.classList.remove("flash"), 1200); }
+
+    // Attach copy button action
+    const copyBtn = document.getElementById("copy-btn");
+    if (copyBtn) {
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(data.answer).then(() => {
+          showToast("Answer copied to clipboard");
+        });
+      };
+    }
+
+    // Attach citation pill click animations
+    out.querySelectorAll(".cite-pill").forEach(pill => {
+      pill.onclick = (evt) => {
+        evt.preventDefault();
+        const targetId = pill.getAttribute("href");
+        const targetEl = document.querySelector(targetId);
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+          targetEl.classList.add("highlight-pulse");
+          setTimeout(() => targetEl.classList.remove("highlight-pulse"), 1500);
+        }
+      };
     });
+
   } catch (err) {
-    out.innerHTML = `<div class="card error">${esc(String(err.message || err))}</div>`;
+    out.innerHTML = `
+      <div class="error-card">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        <div><strong>Error processing question:</strong> ${esc(String(err.message || err))}</div>
+      </div>`;
   } finally {
-    go.disabled = false; go.textContent = "Ask";
+    go.disabled = false;
+    btnText.textContent = "Consult Assistant";
   }
 };
 </script>
