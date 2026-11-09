@@ -38,6 +38,7 @@ Rebuilt from scratch because the original project and its documents were lost.
 5. DONE: Updated README "Answers" section.
 6. DONE: Resume and Project Guide updates.
 7. DONE: Semantic Cache Memory in `src/motor_rag/cache.py` (cosine similarity >= 0.92; serves repeated queries in <20 ms at 0 tokens).
+8. DONE: CI stabilized — isolated unit tests (13s) from external cloud geo-blocking by running retrieval evaluation via workflow_dispatch on demand.
 
 ## Lessons worth telling in interviews (all real)
 - Two-column PDFs mixed columns; fixed with column-aware block ordering.
